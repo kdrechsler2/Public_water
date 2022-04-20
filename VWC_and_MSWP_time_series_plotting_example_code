@@ -1,0 +1,210 @@
+# Time series plots for volumetric water content (VWC) and midday stem water
+# potential (MSWP) measurements
+# Kelley Drechsler
+# 02/26/22
+
+############  MODIFICATION REQUIRED TO SUIT YOUR NEEDS ################
+#################  BUT THIS MIGHT HELP YOU GET STARTED #######################
+
+# THE HELP 
+# Seaborn Lineplot: https://seaborn.pydata.org/generated/seaborn.lineplot.html
+# See matplotlib errorbar for additional kwargs for seaborn.lineplot: 
+# https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.errorbar.html
+
+import seaborn as sns
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Use NP Date as the index for the neutron probe measurements
+NPdata19 = pd.read_excel('Nickels_np_data_2019_SAS_format.xlsx')
+NPdata20 = pd.read_excel('Nickels_np_data_2020_SAS_format.xlsx')
+
+SWPdata19 = pd.read_excel('Nickels_SWP_NP_ET_soil_texture_data_2019.xlsx')
+SWPdata20 = pd.read_excel('Nickels_SWP_NP_ET_soil_texture_data_2020.xlsx')
+
+def filterbyVariety(NPdata):
+    # Boolean variable with True or False if row matches Variety name
+    is_A = NPdata['Variety']=='A' 
+    is_B = NPdata['Variety']=='B'
+    is_N = NPdata['Variety']=='N' 
+
+    NPdata_A = NPdata[is_A]
+    NPdata_B = NPdata[is_B]
+    NPdata_N = NPdata[is_N]
+    
+    return NPdata_A, NPdata_B, NPdata_N
+
+def filterbySchedule(NPdata):
+    # Boolean variable with True or False if row matches Variety name
+    is_S1_or_S2 = [(NPdata['Schedule']=='S1') | (NPdata['Schedule']=='S2')]
+    is_S3_or_S4 = [(NPdata['Schedule']=='S3') | (NPdata['Schedule']=='S4')]
+  
+    NPdata_S1_or_S2 = NPdata[is_S1_or_S2[0]]
+    NPdata_S3_or_S4 = NPdata[is_S3_or_S4[0]]
+    
+    return NPdata_S1_or_S2, NPdata_S3_or_S4
+
+def filterOutGrower(NPdata):
+    isnotGrower = NPdata['Schedule']!='Grower'
+    NPdata_notGrower = NPdata[isnotGrower]
+    
+    return NPdata_notGrower
+    
+def cleandata(NPdata):
+    NPdata.VWC_30cm[NPdata['VWC_30cm']<0.05] = np.nan # good threshold for coarse soils
+    NPdata.VWC_60cm[NPdata['VWC_60cm']<0.05] = np.nan # good threshold for coarse soils
+    NPdata.VWC_90cm[NPdata['VWC_90cm']<0.05] = np.nan # good threshold for coarse soils
+    NPdata.VWC_120cm[NPdata['VWC_120cm']<0.05] = np.nan # good threshold for coarse soils
+    NPdata.VWC_150cm[NPdata['VWC_150cm']<0.05] = np.nan # good threshold for coarse soils
+    NPdata.VWC_avg_top_150cm = 0.2 * (NPdata['VWC_30cm'] + NPdata['VWC_60cm'] + NPdata['VWC_90cm'] + NPdata['VWC_120cm'] + NPdata['VWC_150cm'])
+    NPdata.VWC_avg_top_90cm = 0.3333 * (NPdata['VWC_30cm'] + NPdata['VWC_60cm'] + NPdata['VWC_90cm'])
+    #NPdata[NPdata['VWC_60cm']<0.03] = np.nan # good threshold for coarse soils
+    #NPdata[NPdata['VWC_90cm']<0.03] = np.nan# good threshold for coarse soils
+    #NPdata[NPdata['VWC_120cm']<0.03] = np.nan # good threshold for coarse soils
+    #NPdata[NPdata['VWC_150cm']<0.03] = np.nan # good threshold for coarse soils
+
+    return NPdata
+
+def timeseriesplot(NPdata, pal):
+
+    fig=plt.figure(figsize=(10,3))
+
+    #g = sns.lineplot(data=NPdata, x="Date", y="VWC_30cm", hue="Schedule", 
+    #             style="Schedule",markers=True, ci='sd', 
+    #             estimator=np.median, legend="full")
+    g = sns.lineplot(data=NPdata, x="Date", y="VWC_avg_top_150cm", hue='Schedule', 
+                     legend="full", ci='sd', style="Schedule", 
+                     estimator=np.mean, err_style='bars', palette=pal,
+                     markers=True)
+    plt.rcParams.update({'errorbar.capsize': 5}) # makes the error bar caps visible
+    plt.ylabel('Mean VWC in the top 150 cm')
+    plt.ylim([0, 0.35])
+    plt.legend(loc='lower left', borderaxespad=0)
+    
+    return g
+ 
+def timeseriesplotSWP(SWPdata, pal):
+
+    fig=plt.figure(figsize=(10,3))
+
+    g = sns.lineplot(data=SWPdata, x="Date", y="SWP_mpa", hue='Schedule', 
+                     legend="full", ci='sd', style="Schedule", 
+                     estimator=np.mean, err_style='band', markers=True,
+                     palette=pal)
+    plt.rcParams.update({'errorbar.capsize': 5}) # makes the error bar caps visible
+    plt.ylabel('Midday Stem Water Potential (MPa)')
+    plt.ylim([0, -3.5])
+    plt.legend(loc='lower left', borderaxespad=0)
+    plt.gca().invert_yaxis()
+    
+    return g
+
+# Run definitions 
+NPdata19clean = cleandata(NPdata19)
+NPdata20clean = cleandata(NPdata20)     
+  
+[NPdata_A19, NPdata_B19, NPdata_N19] = filterbyVariety(NPdata19clean)    
+[NPdata_A20, NPdata_B20, NPdata_N20] = filterbyVariety(NPdata20clean)
+
+[NPdata_S1_or_S2_A19, NPdata_S3_or_S4_A19] = filterbySchedule(NPdata_A19)
+[NPdata_S1_or_S2_B19, NPdata_S3_or_S4_B19] = filterbySchedule(NPdata_B19)
+
+[NPdata_S1_or_S2_A20, NPdata_S3_or_S4_A20] = filterbySchedule(NPdata_A20)
+[NPdata_S1_or_S2_B20, NPdata_S3_or_S4_B20] = filterbySchedule(NPdata_B20)
+
+
+# 2019
+g1 = timeseriesplot(NPdata_S1_or_S2_A19,['g', 'b'])
+g2 = timeseriesplot(NPdata_S1_or_S2_B19,['b', 'g'])
+g3 = timeseriesplot(NPdata_S3_or_S4_A19,['y', 'r'])
+g4 = timeseriesplot(NPdata_S3_or_S4_B19,['y', 'r'])
+positions19 = ['2019-04-12','2019-05-10','2019-06-07','2019-07-05','2019-08-02','2019-09-07']
+labels19 = ['12 Apr 2019','10 May 2019','07 Jun 2019','05 Jul 2019','02 Aug 2019','07 Sep 2019']
+g1.set_xticks(positions19)
+g1.set_xticklabels(labels19)
+g2.set_xticks(positions19)
+g2.set_xticklabels(labels19)
+g3.set_xticks(positions19)
+g3.set_xticklabels(labels19)    
+g4.set_xticks(positions19)
+g4.set_xticklabels(labels19)  
+g1.set(xlabel=None)
+g2.set(xlabel=None)
+g3.set(xlabel=None)
+g4.set(xlabel=None)
+
+#2020
+g5 = timeseriesplot(NPdata_S1_or_S2_A20,['g', 'b'])
+g6 = timeseriesplot(NPdata_S1_or_S2_B20,['g', 'b'])
+g7 = timeseriesplot(NPdata_S3_or_S4_A20,['y', 'r'])
+g8 = timeseriesplot(NPdata_S3_or_S4_B20,['y', 'r'])
+positions20 = ['2020-04-22','2020-05-20','2020-06-17','2020-07-15','2020-08-12','2020-09-03']
+labels20 = ['22 Apr 2020','20 May 2020','17 Jun 2020','15 Jul 2020','12 Aug 2020','03 Sep 2020']
+g5.set_xticks(positions20)
+g5.set_xticklabels(labels20)
+g6.set_xticks(positions20)
+g6.set_xticklabels(labels20)
+g7.set_xticks(positions20)
+g7.set_xticklabels(labels20)
+g8.set_xticks(positions20)
+g8.set_xticklabels(labels20)
+g5.set(xlabel=None)
+g6.set(xlabel=None)
+g7.set(xlabel=None)
+g8.set(xlabel=None)   
+
+
+
+
+# Midday Stem Water Potential    
+[SWPdata_A19, SWPdata_B19, SWPdata_N19] = filterbyVariety(SWPdata19)    
+[SWPdata_A20, SWPdata_B20, SWPdata_N20] = filterbyVariety(SWPdata20)
+
+[SWPdata_S1_or_S2_A19, SWPdata_S3_or_S4_A19] = filterbySchedule(SWPdata_A19)
+[SWPdata_S1_or_S2_B19, SWPdata_S3_or_S4_B19] = filterbySchedule(SWPdata_B19)
+
+[SWPdata_S1_or_S2_A20, SWPdata_S3_or_S4_A20] = filterbySchedule(SWPdata_A20)
+[SWPdata_S1_or_S2_B20, SWPdata_S3_or_S4_B20] = filterbySchedule(SWPdata_B20)
+    
+g9 = timeseriesplotSWP(SWPdata_S1_or_S2_A19,['b', 'g'])
+g10 = timeseriesplotSWP(SWPdata_S1_or_S2_B19,['b', 'g'])
+g11 = timeseriesplotSWP(SWPdata_S3_or_S4_A19,['r', 'y'])
+g12 = timeseriesplotSWP(SWPdata_S3_or_S4_B19,['r', 'y'])
+
+g13 = timeseriesplotSWP(SWPdata_S1_or_S2_A20,['b', 'g'])
+g14 = timeseriesplotSWP(SWPdata_S1_or_S2_B20,['b', 'g'])
+g15 = timeseriesplotSWP(SWPdata_S3_or_S4_A20,['r', 'y'])
+g16 = timeseriesplotSWP(SWPdata_S3_or_S4_B20,['r', 'y'])
+
+positions19 = ['2019-07-02','2019-07-16','2019-07-30','2019-08-13','2019-08-27','2019-09-07']
+labels19 = ['02 July 2019','16 Jul 2019','30 Jul 2019','13 Aug 2019','27 Aug 2019','07 Sep 2019']
+positions20 = ['2020-04-22','2020-05-20','2020-06-17','2020-07-15','2020-08-12','2020-09-03']
+labels20 = ['22 Apr 2020','20 May 2020','17 Jun 2020','15 Jul 2020','12 Aug 2020','03 Sep 2020']
+    
+g9.set_xticks(positions19)
+g9.set_xticklabels(labels19)
+g10.set_xticks(positions19)
+g10.set_xticklabels(labels19)
+g11.set_xticks(positions19)
+g11.set_xticklabels(labels19)
+g12.set_xticks(positions19)
+g12.set_xticklabels(labels19)
+g9.set(xlabel=None)
+g10.set(xlabel=None)
+g11.set(xlabel=None)
+g12.set(xlabel=None)      
+
+g13.set_xticks(positions20)
+g13.set_xticklabels(labels20)
+g14.set_xticks(positions20)
+g14.set_xticklabels(labels20)
+g15.set_xticks(positions20)
+g15.set_xticklabels(labels20)
+g16.set_xticks(positions20)
+g16.set_xticklabels(labels20)
+g13.set(xlabel=None)
+g14.set(xlabel=None)
+g15.set(xlabel=None)
+g16.set(xlabel=None)      
+
