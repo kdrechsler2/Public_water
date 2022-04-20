@@ -1,0 +1,29 @@
+import numpy as np # NumPy is the fundamental package for scientific computing 
+import matplotlib.pyplot as plt # Matplotlib is a Python 2D plotting library 
+import pandas as pd
+import requests
+import datetime
+
+ # Step 1: Request access to the CIMIS website using the requests library
+cimis_url = "https://et.water.ca.gov/api/data"
+now = datetime.datetime.now()
+today = now.strftime("%Y-%m-%d")
+cimis_params = {"appKey": "INSERT YOUR APP KEY HERE",
+          "targets":"250",
+          "startDate":"2019-07-09",
+          "endDate": "2019-08-26",
+          "dataItems":"hly-air-tmp,hly-eto,hly-net-rad,hly-asce-eto,hly-asce-etr,hly-precip,hly-rel-hum,hly-sol-rad",
+          "unitOfMeasure":"E"}
+response = requests.get(url=cimis_url, params=cimis_params)
+cimis_url = response.url
+
+print(response)
+if response:
+  print('Request is successful.') # should be 200
+else:
+  print('Request returned an error.')
+ 
+# Step 2: Parsing the JSON Data 
+data_dict = response.json() # Python parses the json response and returns a Python dictionary.
+
+print(data_dict)
